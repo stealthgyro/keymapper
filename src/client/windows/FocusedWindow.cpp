@@ -7,12 +7,12 @@
 namespace {
   std::string wide_to_utf8(const std::wstring_view& str) {
     auto result = std::string();
-    result.resize(WideCharToMultiByte(CP_UTF8, 0, 
-      str.data(), static_cast<int>(str.size()), 
-      NULL, 0, 
+    result.resize(WideCharToMultiByte(CP_UTF8, 0,
+      str.data(), static_cast<int>(str.size()),
+      NULL, 0,
       NULL, 0));
-    WideCharToMultiByte(CP_UTF8, 0, 
-      str.data(), static_cast<int>(str.size()), 
+    WideCharToMultiByte(CP_UTF8, 0,
+      str.data(), static_cast<int>(str.size()),
       result.data(), static_cast<int>(result.size()),
       NULL, 0);
     return result;
@@ -25,11 +25,13 @@ private:
   std::wstring m_current_title;
   std::string m_class;
   std::string m_title;
+  std::string m_path;
 
 public:
   HWND current() const { return m_current_window; }
   const std::string& window_class() const { return m_class; }
   const std::string& window_title() const { return m_title; }
+  const std::string& window_path() const { return m_path; }
 
   bool update() {
     const auto hwnd = GetForegroundWindow();
@@ -50,6 +52,26 @@ public:
     GetClassNameW(hwnd, buffer.data(), static_cast<int>(buffer.size()));
     m_class = wide_to_utf8(buffer.data());
     m_title = wide_to_utf8(m_current_title);
+
+    // Get the process ID of the window
+    DWORD process_id;
+    GetWindowThreadProcessId(hwnd, &process_id);
+
+    // Get the handle to the process
+    const auto handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process_id);
+    if (handle) {
+      // Get the executable path for the process
+      wchar_t exe_path[MAX_PATH];
+      if (GetModuleFileNameExW(handle, NULL, exe_path, MAX_PATH) > 0) {
+        m_path = wide_to_utf8(exe_path);
+      } else {
+        m_path.clear(); // Clear the path if it fails to retrieve
+      }
+      CloseHandle(handle);
+    } else {
+      m_path.clear(); // Clear the path if opening process handle fails
+    }
+
     return true;
   }
 };
@@ -72,6 +94,10 @@ const std::string& FocusedWindow::window_class() const {
 
 const std::string& FocusedWindow::window_title() const {
   return m_impl->window_title();
+}
+
+const std::string& FocusedWindow::window_path() const {
+  return m_impl->window_path();
 }
 
 bool FocusedWindow::is_inaccessible() const {

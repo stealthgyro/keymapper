@@ -45,21 +45,21 @@ namespace {
   HWND g_window;
   NOTIFYICONDATAW g_tray_icon;
   bool g_active{ true };
-  
+
   std::wstring utf8_to_wide(std::string_view str) {
     auto result = std::wstring();
-    result.resize(MultiByteToWideChar(CP_UTF8, 0, 
-      str.data(), static_cast<int>(str.size()), 
+    result.resize(MultiByteToWideChar(CP_UTF8, 0,
+      str.data(), static_cast<int>(str.size()),
       NULL, 0));
-    MultiByteToWideChar(CP_UTF8, 0, 
-      str.data(), static_cast<int>(str.size()), 
+    MultiByteToWideChar(CP_UTF8, 0,
+      str.data(), static_cast<int>(str.size()),
       result.data(), static_cast<int>(result.size()));
     return result;
   }
 
   bool starts_with_case_insensitive(const std::string& string, const char* value) {
     for (const auto* a = string.c_str(), *b = value; *b != '\0'; ++a, ++b)
-      if (*a == '\0' || 
+      if (*a == '\0' ||
           std::tolower(static_cast<int>(*a)) != std::tolower(static_cast<int>(*b)))
         return false;
     return true;
@@ -75,16 +75,16 @@ namespace {
     auto args = L"/C " + utf8_to_wide(command);
 
     auto flags = DWORD{ };
-    if (!starts_with_case_insensitive(command, "cmd") && 
+    if (!starts_with_case_insensitive(command, "cmd") &&
         !starts_with_case_insensitive(command, "powershell"))
       flags |= CREATE_NO_WINDOW;
 
     auto startup_info = STARTUPINFOW{ sizeof(STARTUPINFOW) };
     auto process_info = PROCESS_INFORMATION{ };
-    if (!CreateProcessW(cmd.data(), args.data(), nullptr, nullptr, FALSE, 
-        flags, nullptr, nullptr, &startup_info, &process_info)) 
+    if (!CreateProcessW(cmd.data(), args.data(), nullptr, nullptr, FALSE,
+        flags, nullptr, nullptr, &startup_info, &process_info))
       return false;
-    
+
     CloseHandle(process_info.hProcess);
     CloseHandle(process_info.hThread);
     return true;
@@ -100,7 +100,7 @@ namespace {
       execute_terminal_command(command);
     }
   }
- 
+
   void update_active_contexts(bool force_send) {
     const auto& contexts = g_config_file.config().contexts;
 
@@ -117,11 +117,11 @@ namespace {
       g_current_active_contexts.swap(g_new_active_contexts);
     }
   }
-  
+
   void validate_state() {
     // validate internal state when a window of another user was focused
     // force validation after session change
-    const auto check_accessibility = 
+    const auto check_accessibility =
       !std::exchange(g_session_changed, false);
     if (check_accessibility) {
       if (g_focused_window.is_inaccessible()) {
@@ -139,6 +139,7 @@ namespace {
       verbose("Detected focused window changed:");
       verbose("  class = '%s'", g_focused_window.window_class().c_str());
       verbose("  title = '%s'", g_focused_window.window_title().c_str());
+      verbose("  path = '%s'", g_focused_window.window_class().c_str());
       update_active_contexts(false);
     }
   }
@@ -167,34 +168,34 @@ namespace {
     if (g_config_file.update(check_modified)) {
       message("Configuration updated");
       send_config();
-    }    
+    }
   }
 
   void open_configuration() {
     const auto filename = g_config_file.filename().wstring();
 
     // create if it does not exist
-    if (auto handle = CreateFileW(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, 
-          nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0); 
+    if (auto handle = CreateFileW(filename.c_str(), GENERIC_READ, FILE_SHARE_READ,
+          nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
         handle != INVALID_HANDLE_VALUE) {
       CloseHandle(handle);
     }
 
     SetForegroundWindow(g_window);
-    ShellExecuteW(nullptr, L"open", filename.c_str(), 
+    ShellExecuteW(nullptr, L"open", filename.c_str(),
       nullptr, nullptr, SW_SHOWNORMAL);
   }
 
   void open_online_help() {
     SetForegroundWindow(g_window);
-    ShellExecuteA(nullptr, "open", online_help_url, 
+    ShellExecuteA(nullptr, "open", online_help_url,
       nullptr, nullptr, SW_SHOWNORMAL);
   }
 
   void open_about() {
     const auto caption = "About keymapper";
     auto text = std::vector<char>(1024);
-    text.resize(std::snprintf(text.data(), text.size(), 
+    text.resize(std::snprintf(text.data(), text.size(),
       "Version %s\n"
       "\n"
       "%s",
@@ -210,7 +211,7 @@ namespace {
 
   void open_tray_menu() {
     auto popup_menu = CreatePopupMenu();
-    AppendMenuW(popup_menu, 
+    AppendMenuW(popup_menu,
       (g_active ? MF_CHECKED : MF_UNCHECKED) | MF_STRING, IDI_ACTIVE, L"Active");
     AppendMenuW(popup_menu, MF_STRING, IDI_OPEN_CONFIG, L"Configuration");
     if (!g_settings.auto_update_config)
@@ -222,7 +223,7 @@ namespace {
     SetForegroundWindow(g_window);
     auto cursor_pos = POINT{ };
     GetCursorPos(&cursor_pos);
-    TrackPopupMenu(popup_menu, 
+    TrackPopupMenu(popup_menu,
       TPM_NOANIMATION | TPM_VCENTERALIGN,
       cursor_pos.x + 7, cursor_pos.y, 0, g_window, nullptr);
   }
@@ -323,10 +324,10 @@ namespace {
     auto error = std::error_code{ };
     if (filename.empty()) {
       filename = default_config_filename;
-      for (auto folder_id : { 
-            FOLDERID_Profile, 
-            FOLDERID_LocalAppData, 
-            FOLDERID_RoamingAppData 
+      for (auto folder_id : {
+            FOLDERID_Profile,
+            FOLDERID_LocalAppData,
+            FOLDERID_RoamingAppData
           }) {
         auto path = get_known_folder_path(folder_id) / filename;
         if (std::filesystem::exists(path, error))
@@ -338,7 +339,7 @@ namespace {
     }
     return std::filesystem::absolute(filename, error);
   }
-  
+
   void show_notification(const char* message_) {
     auto& icon = g_tray_icon;
     const auto message = utf8_to_wide(message_);
@@ -357,7 +358,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int) {
   if (!g_settings.no_tray_icon)
     g_show_notification = &show_notification;
 
-  g_settings.config_file_path = 
+  g_settings.config_file_path =
     resolve_config_file_path(g_settings.config_file_path);
 
   if (g_settings.check_config) {
@@ -409,7 +410,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR, int) {
   g_config_file.load(g_settings.config_file_path);
 
   send_config();
-  
+
   WTSRegisterSessionNotification(g_window, NOTIFY_FOR_THIS_SESSION);
 
   auto disable = BOOL{ FALSE };
